@@ -36,7 +36,7 @@
         {:status 200
          :body "asdads"})}}]])
 
-(defn app
+(defn handler
   [{:keys [datasource]}]
   (ring/ring-handler
    (ring/router

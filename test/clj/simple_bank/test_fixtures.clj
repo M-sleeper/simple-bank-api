@@ -19,7 +19,7 @@
 
 (defn with-system [f]
   (let [system (system/start-system!)]
-    (binding [*handler* (:simple-bank/app system)
-              *datasource* (:simple-bank.system/db system)]
+    (binding [*handler* (:simple-bank.system/handler system)
+              *datasource* (:simple-bank.db/db system)]
       (f))
     (system/stop-system! system)))

@@ -1,29 +1,17 @@
 (ns simple-bank.system
   (:require
    [clojure.java.io :as io]
-   [hikari-cp.core :as cp]
    [integrant.core :as ig]
-   [migratus.core :as migratus]
    [next.jdbc.transaction]
    [ring.adapter.jetty :as jetty]
    [simple-bank.handler :as handler])
   (:gen-class))
 
-(defmethod ig/init-key ::app [_ deps]
-  (handler/app deps))
+(defmethod ig/init-key ::handler [_ deps]
+  (handler/handler deps))
 
-(defmethod ig/init-key ::db [_ {:keys [migration] :as db-spec}]
-  (let [datasource (cp/make-datasource db-spec)
-        migratus-config (assoc-in migration [:db :datasource] datasource)]
-    (migratus/init migratus-config)
-    (migratus/migrate migratus-config)
-    datasource))
-
-(defmethod ig/halt-key! ::db [_ pool]
-  (cp/close-datasource pool))
-
-(defmethod ig/init-key ::server [_ {:keys [app port]}]
-  (jetty/run-jetty app {:port port :join? false}))
+(defmethod ig/init-key ::server [_ {:keys [handler port]}]
+  (jetty/run-jetty handler {:port port :join? false}))
 
 (defmethod ig/halt-key! ::server [_ server]
   (.stop server))
