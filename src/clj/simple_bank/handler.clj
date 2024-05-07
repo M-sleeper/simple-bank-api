@@ -11,7 +11,9 @@
    [reitit.ring.middleware.muuntaja :as muuntaja]
    [reitit.ring.middleware.parameters :as parameters]
    [reitit.swagger :as swagger]
-   [reitit.swagger-ui :as swagger-ui]))
+   [reitit.swagger-ui :as swagger-ui]
+   [simple-bank.account :as account]
+   [simple-bank.db :as db]))
 
 (def swagger-routes
   ["/swagger.json"
@@ -26,15 +28,9 @@
    {:tags #{"account"}}
    [""
     {:post
-     {:parameters {:form [:map [:name string?]]}
-      :responses  {200 {:body [:map
-                               [:account-number int?]
-                               [:name string?]
-                               [:balance number?]]}}
-      :handler
-      (fn [{{:keys [db]} :env}]
-        {:status 200
-         :body "asdads"})}}]])
+     {:parameters {:body (mu/select-keys account/Account [:name])}
+      :responses  {200 {:body account/Account}}
+      :handler #'account/handle-create}}]])
 
 (defn handler
   [{:keys [datasource]}]
@@ -47,14 +43,15 @@
                        {:compile mu/closed-schema
                         :strip-extra-keys true
                         :default-values false})
-            :datasource datasource
             :muuntaja m/instance
             :middleware [swagger/swagger-feature
                          parameters/parameters-middleware
-                         muuntaja/format-request-middleware
-                         coercion/coerce-request-middleware
+                         muuntaja/format-negotiate-middleware
                          muuntaja/format-response-middleware
-                         coercion/coerce-response-middleware]}})
+                         [db/db-middleware datasource]
+                         muuntaja/format-request-middleware
+                         coercion/coerce-response-middleware
+                         coercion/coerce-request-middleware]}})
 
    (ring/routes
     (swagger-ui/create-swagger-ui-handler

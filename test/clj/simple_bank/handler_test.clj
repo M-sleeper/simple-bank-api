@@ -1,6 +1,6 @@
 (ns simple-bank.handler-test
   (:require
-   [clojure.test :refer [is deftest use-fixtures]]
+   [clojure.test :refer [is deftest use-fixtures testing]]
    [muuntaja.core :as mc]
    [ring.mock.request :as mock]
    [simple-bank.test-fixtures :refer [*handler* with-db with-system]]))
@@ -15,6 +15,9 @@
                  (mock/json-body body))))
 
 (deftest account-test
-  ;; TODO
-  (is (= 1 0))
-  )
+  (testing "Feature 1 - Create a bank account,"
+    (testing "create a bank account"
+      (let [result (do-request {:method :post
+                                :endpoint "/account"
+                                :body {:name "Mr. Black"}})]
+        (def a result)))))

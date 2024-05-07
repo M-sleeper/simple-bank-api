@@ -19,8 +19,9 @@
 (defn load-config []
   (-> "config/config.edn" io/resource slurp ig/read-string))
 
-(defn start-system! []
-  (ig/init (load-config)))
+(defn start-system!
+  ([] (start-system! (load-config)))
+  ([config] (ig/init config)))
 
 (defn stop-system! [system]
   (ig/halt! system))
