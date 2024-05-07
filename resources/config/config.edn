@@ -1,0 +1,12 @@
+{:simple-bank.system/db
+ {:migration {:store                :database
+              :migration-dir        "migrations/"
+              :migration-table-name "migrations"}
+  :jdbc-url "jdbc:postgresql://localhost/simple_bank?user=simple_bank&password=password"}
+
+ :simple-bank.system/app
+ {:datasource #ig/ref :simple-bank.system/db}
+
+ :simple-bank.system/server
+ {:app #ig/ref :simple-bank.system/app
+  :port 8080}}

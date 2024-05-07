@@ -1,0 +1,17 @@
+/target
+/classes
+/checkouts
+*.jar
+*.class
+/.cpcache
+*.db
+/.nrepl-history
+/.nrepl-port
+/.rebel_readline_history
+/.socket-repl-port
+**/logs
+*.log
+.clj-kondo
+*.xcf
+*~
+/.lsp/.cache
