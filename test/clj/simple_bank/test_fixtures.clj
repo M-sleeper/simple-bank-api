@@ -1,7 +1,6 @@
 (ns simple-bank.test-fixtures
   (:require
    [clj-test-containers.core :as tc]
-   [next.jdbc :as jdbc]
    [simple-bank.system :as system]))
 
 (def ^:dynamic *datasource* nil)
@@ -16,6 +15,9 @@
                                             "POSTGRES_USER"     "simple_bank"
                                             "POSTGRES_DB"       "simple_bank"}})
                 (tc/start!))]
+    (tc/wait {:wait-strategy :log
+              :message       "accept connections"}
+             (:container *db-container*))
     (f)))
 
 (defn with-system [f]
