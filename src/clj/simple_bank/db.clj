@@ -17,15 +17,25 @@
 (defmethod ig/halt-key! ::db [_ pool]
   (cp/close-datasource pool))
 
-(def ^:dynamic ^:private *datasource* nil)
+(def ^:dynamic *datasource* nil)
 
 (def db-middleware
   {:name ::middleware
    :wrap (fn [handler datasource]
            (fn [request]
-             (binding [*datasource* (jdbc/with-options datasource
-                                      {:builder-fn rs/as-unqualified-kebab-maps})]
+             (binding [*datasource* datasource]
                (handler request))))})
 
 (defn execute! [sqlmap]
-  (jdbc/execute! *datasource* (sql/format sqlmap)))
+  (jdbc/execute! *datasource*
+                 (sql/format sqlmap)
+                 {:builder-fn rs/as-unqualified-kebab-maps}))
+
+(defmacro execute-in-transaction!
+  [& body]
+  `(jdbc/with-transaction [transaction-ds# *datasource*]
+     (binding [*datasource* transaction-ds#]
+       ~@body)))
+
+(defn rollback []
+  (.rollback *datasource*))
