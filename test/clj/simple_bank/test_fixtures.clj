@@ -8,17 +8,19 @@
 (def ^:dynamic *db-container* nil)
 
 (defn with-db [f]
-  (binding [*db-container*
-            (-> (tc/create {:image-name    "postgres"
-                            :exposed-ports [5432]
-                            :env-vars      {"POSTGRES_PASSWORD" "password"
-                                            "POSTGRES_USER"     "simple_bank"
-                                            "POSTGRES_DB"       "simple_bank"}})
-                (tc/start!))]
-    (tc/wait {:wait-strategy :log
-              :message       "accept connections"}
-             (:container *db-container*))
-    (f)))
+  (let [container (-> (tc/create {:image-name    "postgres"
+                                  :exposed-ports [5432]
+                                  :env-vars      {"POSTGRES_PASSWORD" "password"
+                                                  "POSTGRES_USER"     "simple_bank"
+                                                  "POSTGRES_DB"       "simple_bank"}})
+                      (tc/start!))]
+    (tc/wait {:wait-strategy   :log
+              :message         "accept connections"
+              :times           2
+              :startup-timeout 15}
+             (:container container))
+    (binding [*db-container* container]
+      (f))))
 
 (defn with-system [f]
   (let [port (get-in *db-container* [:mapped-ports 5432])
