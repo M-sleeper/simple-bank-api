@@ -9,7 +9,12 @@
               [:name string?]
               [:balance number?]])
 
-(def PositiveAmount [:map {:closed true} [:amount 'pos?]])
+(def PositiveAmount [:map {:closed true}
+                     [:amount 'pos?]])
+
+(def Transfer [:map {:closed true}
+               [:amount 'pos?]
+               [:account-number :int]])
 
 (def api-db-key-mapping {:name :full-name
                          :account-number :id})
@@ -32,12 +37,29 @@
                  :from [:account]
                  :where [:= :id id]})))
 
+(defn change-amount-query-part [modifier amount]
+  {:balance [modifier :balance amount]})
+
+(defn get-update-account-query [id updates]
+  {:update [:account]
+   :set updates
+   :where [:= :id id]
+   :returning [:*]})
+
 (defn update-account [id updates]
-  (first
-   (db/execute! {:update [:account]
-                 :set updates
-                 :where [:= :id id]
-                 :returning [:*]})))
+  (-> (get-update-account-query id updates) db/execute! first))
+
+(defn transfer [{:keys [sending-account-id
+                        receiving-account-id
+                        amount]}]
+  (db/execute-in-transaction!
+   (let [results [(update-account sending-account-id
+                                  (change-amount-query-part :- amount))
+                  (update-account receiving-account-id
+                                  (change-amount-query-part :+ amount))]]
+     (when (some empty? results)
+       (db/rollback))
+     results)))
 
 (defn handle-create [{:keys [body-params]}]
   (response/response (<-db (insert-account body-params))))
@@ -51,7 +73,7 @@
                        {:keys [id]} :path-params}]
   (if-let [updated-account (update-account
                             (Integer/parseInt id)
-                            {:balance [:+ :balance amount]})]
+                            (change-amount-query-part :+ amount))]
     (response/response (<-db updated-account))
     (response/not-found "Account not found")))
 
@@ -59,10 +81,30 @@
                         {:keys [id]} :path-params}]
   (if-let [updated-account (update-account
                             (Integer/parseInt id)
-                            {:balance [:- :balance amount]})]
+                            (change-amount-query-part :- amount))]
     (response/response (<-db updated-account))
     (response/not-found "Account not found")))
 
+(defn handle-send [{{:keys [amount account-number]} :body-params
+                    {:keys [id]} :path-params}]
+  (let [sending-account-id (Integer/parseInt id)
+        receiving-account-id account-number]
+    (if (= sending-account-id receiving-account-id)
+      (response/bad-request "It is not possible to transfer money from an account to itself")
+      (let [[updated-sending-account
+             updated-receiving-account]
+            (transfer
+             {:sending-account-id sending-account-id
+              :receiving-account-id receiving-account-id
+              :amount amount})]
+        (cond
+          (nil? updated-sending-account)
+          (response/not-found "Sending account not found")
+
+          (nil? updated-receiving-account)
+          (response/not-found "Receiving account not found")
+
+          :else (response/response (<-db updated-sending-account)))))))
 
 (defmethod exception/handle-request-coercion-exception PositiveAmount
   [_ _]

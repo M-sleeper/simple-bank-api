@@ -49,7 +49,13 @@
       {:parameters {:path [:map [:id int?]]
                     :body account/PositiveAmount}
        :responses {200 {:body account/Account}}
-       :handler #'account/handle-withdraw}}]]])
+       :handler #'account/handle-withdraw}}]
+    ["/send"
+     {:post
+      {:parameters {:path [:map [:id int?]]
+                    :body account/Transfer}
+       :responses {200 {:body account/Account}}
+       :handler #'account/handle-send}}]]])
 
 (defn handler
   [{:keys [datasource]}]
