@@ -1,8 +1,8 @@
 (ns simple-bank.exception
   (:require
-   [taoensso.timbre :as log]
+   [malli.core :as malli]
    [reitit.ring.middleware.exception :as exception]
-   [malli.core :as m]))
+   [taoensso.timbre :as log]))
 
 (def sql-exception-dispatch-columns
   #{:constraint :table :column})
@@ -20,7 +20,7 @@
 
 (defmulti handle-request-coercion-exception
   (fn [exception _request]
-    (-> exception ex-data :schema m/form)))
+    (-> exception ex-data :schema malli/form)))
 
 (defmethod handle-request-coercion-exception :default
   [exception request]

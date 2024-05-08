@@ -1,9 +1,10 @@
 (ns simple-bank.account
-  (:require [simple-bank.db :as db]
-            [ring.util.response :as response]
-            [clojure.set :as set]
-            [simple-bank.audit-log :as audit-log]
-            [simple-bank.exception :as exception]))
+  (:require
+   [clojure.set :as set]
+   [ring.util.response :as response]
+   [simple-bank.audit-log :as audit-log]
+   [simple-bank.db :as db]
+   [simple-bank.exception :as exception]))
 
 (def Account [:map
               [:account-number int?]
@@ -103,7 +104,7 @@
         receiving-account-id account-number]
     (if (= sending-account-id receiving-account-id)
       (response/bad-request
-        "It is not possible to transfer money from an account to itself")
+       "It is not possible to transfer money from an account to itself")
       (let [[updated-sending-account
              updated-receiving-account]
             (transfer

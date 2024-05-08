@@ -1,7 +1,8 @@
 (ns simple-bank.audit-log
-  (:require [simple-bank.db :as db]
-            [simple-bank.exception :as exception]
-            [ring.util.response :as response]))
+  (:require
+   [ring.util.response :as response]
+   [simple-bank.db :as db]
+   [simple-bank.exception :as exception]))
 
 (def AuditLog [:map
                [:sequence :int]
@@ -59,10 +60,9 @@
        (map (partial marshal-audit-log account-id))))
 
 (defn handle-account-audit [{{:keys [id]} :path-params}]
-  (def a (get-account-audit-logs (Integer/parseInt id)))
-  (def b (db/execute! {:select [:*]
-                       :from [:audit-log]}))
-  (response/response a))
+  (-> (Integer/parseInt id)
+      get-account-audit-logs
+      response/response))
 
 (defmethod exception/handle-psql-exception {:constraint "fk_account_from"
                                             :table "audit_log"}

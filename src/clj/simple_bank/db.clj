@@ -1,12 +1,12 @@
 (ns simple-bank.db
   (:require
    [hikari-cp.core :as cp]
+   [honey.sql :as sql]
    [integrant.core :as ig]
    [migratus.core :as migratus]
-   [next.jdbc.transaction]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs]
-   [honey.sql :as sql]))
+   [next.jdbc.transaction]))
 
 (defmethod ig/init-key ::db [_ {:keys [migration connection]}]
   (let [datasource (cp/make-datasource connection)
@@ -39,8 +39,3 @@
 
 (defn rollback []
   (.rollback *datasource*))
-
-(comment
-  (migratus/create (get-in (simple-bank.system/load-config) [::db :migration])
-                   "create_audit_log_table")
-  )
