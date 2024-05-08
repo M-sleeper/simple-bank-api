@@ -5,8 +5,7 @@
 ### Starting the database using docker
 
 ```
-docker run --name simple_bank --network=host -e POSTGRES_PASSWORD=password -e POSTGRES_DB=
-simple_bank -e POSTGRES_USER=simple_bank -d postgres
+docker run --name simple_bank --network=host -e POSTGRES_PASSWORD=password -e POSTGRES_DB=simple_bank -e POSTGRES_USER=simple_bank -d postgres
 ```
 
 ### Starting the server
