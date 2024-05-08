@@ -1,12 +1,15 @@
 (ns simple-bank.account
   (:require [simple-bank.db :as db]
             [ring.util.response :as response]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [simple-bank.exception :as exception]))
 
 (def Account [:map
               [:account-number int?]
               [:name string?]
               [:balance number?]])
+
+(def PositiveAmount [:map {:closed true} [:amount 'pos?]])
 
 (def api-db-key-mapping {:name :full-name
                          :account-number :id})
@@ -47,7 +50,25 @@
 (defn handle-deposit [{{:keys [amount]} :body-params
                        {:keys [id]} :path-params}]
   (if-let [updated-account (update-account
-                             (Integer/parseInt id)
-                             {:balance [:+ :balance amount]})]
+                            (Integer/parseInt id)
+                            {:balance [:+ :balance amount]})]
     (response/response (<-db updated-account))
     (response/not-found "Account not found")))
+
+(defn handle-withdraw [{{:keys [amount]} :body-params
+                        {:keys [id]} :path-params}]
+  (if-let [updated-account (update-account
+                            (Integer/parseInt id)
+                            {:balance [:- :balance amount]})]
+    (response/response (<-db updated-account))
+    (response/not-found "Account not found")))
+
+
+(defmethod exception/handle-request-coercion-exception PositiveAmount
+  [_ _]
+  (response/bad-request "Amount must be a positive value"))
+
+(defmethod exception/handle-sql-exception {:constraint "balance_non_negative"
+                                           :table "account"}
+  [_ _]
+  (response/bad-request "Balance must not be a negative value"))

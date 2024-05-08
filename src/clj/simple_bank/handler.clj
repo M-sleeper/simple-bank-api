@@ -8,13 +8,13 @@
    [reitit.ring :as ring]
    [reitit.ring.coercion :as coercion]
    [reitit.ring.malli]
-   [reitit.ring.middleware.exception :as exception]
    [reitit.ring.middleware.muuntaja :as muuntaja]
    [reitit.ring.middleware.parameters :as parameters]
    [reitit.swagger :as swagger]
    [reitit.swagger-ui :as swagger-ui]
    [simple-bank.account :as account]
-   [simple-bank.db :as db]))
+   [simple-bank.db :as db]
+   [simple-bank.exception :as exception]))
 
 (def swagger-routes
   ["/swagger.json"
@@ -41,9 +41,15 @@
     ["/deposit"
      {:post
       {:parameters {:path [:map [:id int?]]
-                    :body [:map [:amount pos?]]}
+                    :body account/PositiveAmount}
        :responses {200 {:body account/Account}}
-       :handler #'account/handle-deposit}}]]])
+       :handler #'account/handle-deposit}}]
+    ["/withdraw"
+     {:post
+      {:parameters {:path [:map [:id int?]]
+                    :body account/PositiveAmount}
+       :responses {200 {:body account/Account}}
+       :handler #'account/handle-withdraw}}]]])
 
 (defn handler
   [{:keys [datasource]}]
