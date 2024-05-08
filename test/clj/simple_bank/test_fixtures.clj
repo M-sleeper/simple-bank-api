@@ -7,18 +7,20 @@
 (def ^:dynamic *handler* nil)
 (def ^:dynamic *db-container* nil)
 
+(def db-container-options
+  {:image-name    "postgres"
+   :exposed-ports [5432]
+   :env-vars      {"POSTGRES_PASSWORD" "password"
+                   "POSTGRES_USER"     "simple_bank"
+                   "POSTGRES_DB"       "simple_bank"}
+   :wait-for      {:wait-strategy   :log
+                   :message         "accept connections"
+                   :times 2
+                   :startup-timeout 10}})
+
 (defn with-db [f]
-  (let [container (-> (tc/create {:image-name    "postgres"
-                                  :exposed-ports [5432]
-                                  :env-vars      {"POSTGRES_PASSWORD" "password"
-                                                  "POSTGRES_USER"     "simple_bank"
-                                                  "POSTGRES_DB"       "simple_bank"}})
+  (let [container (-> (tc/create db-container-options)
                       (tc/start!))]
-    (tc/wait {:wait-strategy   :log
-              :message         "accept connections"
-              :times           2
-              :startup-timeout 15}
-             (:container container))
     (binding [*db-container* container]
       (f))))
 
