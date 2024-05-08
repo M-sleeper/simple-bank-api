@@ -135,9 +135,33 @@
       (testing "the resulting balance of the sending account should not fall below zero"
         (is (= {:status 400
                 :headers {}
-                :body "The resulting balance of the sending account should not fall below zero"}
+                :body "Balance must not be a negative value"}
                (do-request {:method :post
                             :endpoint (str "/account/" account-number1 "/send")
                             :body {:amount 80
                                    :account-number account-number2}
-                            :return-raw-response true})))))))
+                            :return-raw-response true}))))
+      (testing "you cannot transfer money to a non-existent account"
+        (is (= {:status 404
+                :headers {}
+                :body "Receiving account not found"}
+               (do-request {:method :post
+                            :endpoint (str "/account/" account-number1 "/send")
+                            :body {:amount 10
+                                   :account-number 12345678}
+                            :return-raw-response true})))
+        (is (= (assoc new-account1 :balance 60)
+               (do-request {:method :get
+                            :endpoint (str "/account/" account-number1)}))))
+      (testing "you cannot transfer money from a non-existent account"
+        (is (= {:status 404
+                :headers {}
+                :body "Sending account not found"}
+               (do-request {:method :post
+                            :endpoint (str "/account/" 12345678 "/send")
+                            :body {:amount 10
+                                   :account-number account-number1}
+                            :return-raw-response true})))
+        (is (= (assoc new-account1 :balance 60)
+               (do-request {:method :get
+                            :endpoint (str "/account/" account-number1)})))))))
