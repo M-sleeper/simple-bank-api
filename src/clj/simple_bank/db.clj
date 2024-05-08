@@ -39,3 +39,8 @@
 
 (defn rollback []
   (.rollback *datasource*))
+
+(comment
+  (migratus/create (get-in (simple-bank.system/load-config) [::db :migration])
+                   "create_audit_log_table")
+  )
