@@ -1,6 +1,6 @@
 (ns simple-bank.handler-test
   (:require
-   [clojure.test :refer [is deftest use-fixtures testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [muuntaja.core :as mc]
    [ring.mock.request :as mock]
    [simple-bank.test-fixtures :refer [*handler* with-db with-system]]))
@@ -217,3 +217,41 @@
                  :description (str "receive from #" account-number1)}]
                (do-request {:method :get
                             :endpoint (str "/account/" account-number2 "/audit")})))))))
+
+(deftest transfer-concurrency-test
+  (testing "10000 concurrent transfer request"
+    (let [account-numbers
+          (pmap
+           #(:account-number
+             (do-request {:method :post
+                          :endpoint "/account"
+                          :body {:name (str "account-" %)}}))
+           (range 10000))
+
+          _deposit-results
+          (doall
+           (pmap #(do-request {:method :post
+                               :endpoint (str "/account/" % "/deposit")
+                               :body {:amount %}})
+                 account-numbers))
+
+          max-account-number (apply max account-numbers)
+          transferring-accounts (remove #(= max-account-number %)
+                                        account-numbers)
+
+          _transfer-amounts-to-next-account-results
+          (doall
+           (pmap #(do-request {:method :post
+                               :endpoint (str "/account/" % "/send")
+                               :body {:amount %
+                                      :account-number (inc %)}})
+                 transferring-accounts))
+          final-accounts (->> transferring-accounts
+                              (pmap #(do-request {:method :get
+                                                  :endpoint (str "/account/" %)}))
+                              doall)]
+
+      (is (every?
+           (fn [{:keys [account-number balance]}]
+             (= balance (dec account-number)))
+           final-accounts)))))
