@@ -68,7 +68,7 @@
   [_ _]
   (response/bad-request "Amount must be a positive value"))
 
-(defmethod exception/handle-sql-exception {:constraint "balance_non_negative"
+(defmethod exception/handle-psql-exception {:constraint "balance_non_negative"
                                            :table "account"}
   [_ _]
   (response/bad-request "Balance must not be a negative value"))

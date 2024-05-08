@@ -7,14 +7,14 @@
 (def sql-exception-dispatch-columns
   #{:constraint :table :column})
 
-(defmulti handle-sql-exception
+(defmulti handle-psql-exception
   (fn [exception _request]
     (->> (bean (.getServerErrorMessage exception))
          (filter #(and (sql-exception-dispatch-columns (key %))
                        (val %)))
          (into {}))))
 
-(defmethod handle-sql-exception :default
+(defmethod handle-psql-exception :default
   [exception request]
   (exception/default-handler exception request))
 
@@ -34,7 +34,7 @@
     exception/default-handlers
     {:reitit.coercion/request-coercion handle-request-coercion-exception
 
-     java.sql.SQLException handle-sql-exception
+     org.postgresql.util.PSQLException handle-psql-exception
 
      ::exception/wrap (fn [handler exception request]
                         (log/error exception)
