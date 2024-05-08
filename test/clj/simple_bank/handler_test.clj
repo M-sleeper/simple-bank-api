@@ -99,6 +99,14 @@
                (do-request {:method :post
                             :endpoint (str "/account/" account-number "/withdraw")
                             :body {:amount 130}
+                            :return-raw-response true}))))
+      (testing "you cannot withdraw from a non-existing account"
+        (is (= {:status 404
+                :headers {}
+                :body "Account not found"}
+               (do-request {:method :post
+                            :endpoint (str "/account/" 12345678 "/withdraw")
+                            :body {:amount 30}
                             :return-raw-response true})))))))
 
 (deftest transfer-test
@@ -141,7 +149,7 @@
                             :body {:amount 80
                                    :account-number account-number2}
                             :return-raw-response true}))))
-      (testing "you cannot transfer money to a non-existent account"
+      (testing "you cannot transfer money to a non-existing account"
         (is (= {:status 404
                 :headers {}
                 :body "Receiving account not found"}
@@ -153,7 +161,7 @@
         (is (= (assoc new-account1 :balance 60)
                (do-request {:method :get
                             :endpoint (str "/account/" account-number1)}))))
-      (testing "you cannot transfer money from a non-existent account"
+      (testing "you cannot transfer money from a non-existing account"
         (is (= {:status 404
                 :headers {}
                 :body "Sending account not found"}
@@ -165,3 +173,47 @@
         (is (= (assoc new-account1 :balance 60)
                (do-request {:method :get
                             :endpoint (str "/account/" account-number1)})))))))
+
+(deftest audit-log-test
+  (testing "Feature 6 - Retrieve account audit log"
+    (let [{account-number1 :account-number}
+          (do-request {:method :post
+                       :endpoint "/account"
+                       :body {:name "Mr. Black"}})
+          {account-number2 :account-number}
+          (do-request {:method :post
+                       :endpoint "/account"
+                       :body {:name "Mr. White"}})]
+      (do-request {:method :post
+                   :endpoint (str "/account/" account-number1 "/deposit")
+                   :body {:amount 100}})
+      (do-request {:method :post
+                   :endpoint (str "/account/" account-number1 "/send")
+                   :body {:amount 40
+                          :account-number account-number2}})
+      (do-request {:method :post
+                   :endpoint (str "/account/" account-number1 "/withdraw")
+                   :body {:amount 20}})
+      (do-request {:method :post
+                   :endpoint (str "/account/" account-number2 "/withdraw")
+                   :body {:amount 10}})
+      (testing "you can retrieve the audit log of an account"
+        (is (= [{:sequence 3
+                 :debit 20
+                 :description "withdraw"}
+                {:sequence 2
+                 :debit 40
+                 :description (str "send to #" account-number2)}
+                {:sequence 1
+                 :credit 100
+                 :description "deposit"}]
+               (do-request {:method :get
+                            :endpoint (str "/account/" account-number1 "/audit")})))
+        (is (= [{:sequence 4
+                 :debit 10
+                 :description "withdraw"}
+                {:sequence 2
+                 :credit 40
+                 :description (str "receive from #" account-number1)}]
+               (do-request {:method :get
+                            :endpoint (str "/account/" account-number2 "/audit")})))))))

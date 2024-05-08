@@ -1,8 +1,9 @@
-CREATE TABLE audit_log (
-       id SERIAL NOT NULL,
-       amount NUMERIC,
-       account_from int,
-       account_to int,
+create table audit_log (
+       id serial not null,
+       amount numeric not null,
+       account_from int default null,
+       account_to int default null,
+       date_created timestamp DEFAULT now() NOT NULL,
        constraint fk_account_from
                   foreign key(account_from)
                           references account(id),

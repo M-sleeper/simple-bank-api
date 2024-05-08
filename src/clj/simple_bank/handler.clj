@@ -13,6 +13,7 @@
    [reitit.swagger :as swagger]
    [reitit.swagger-ui :as swagger-ui]
    [simple-bank.account :as account]
+   [simple-bank.audit-log :as audit-log]
    [simple-bank.db :as db]
    [simple-bank.exception :as exception]))
 
@@ -55,7 +56,12 @@
       {:parameters {:path [:map [:id int?]]
                     :body account/Transfer}
        :responses {200 {:body account/Account}}
-       :handler #'account/handle-send}}]]])
+       :handler #'account/handle-send}}]
+    ["/audit"
+     {:get
+      {:parameters {:path [:map [:id int?]]}
+       :responses {200 {:body [:sequential audit-log/AuditLog]}}
+       :handler #'audit-log/handle-account-audit}}]]])
 
 (defn handler
   [{:keys [datasource]}]

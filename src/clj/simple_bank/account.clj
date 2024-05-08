@@ -2,6 +2,7 @@
   (:require [simple-bank.db :as db]
             [ring.util.response :as response]
             [clojure.set :as set]
+            [simple-bank.audit-log :as audit-log]
             [simple-bank.exception :as exception]))
 
 (def Account [:map
@@ -49,6 +50,16 @@
 (defn update-account [id updates]
   (-> (get-update-account-query id updates) db/execute! first))
 
+(defn deposit-to-account [id amount]
+  (db/execute-in-transaction!
+   (audit-log/insert-deposit-log id amount)
+   (update-account id (change-amount-query-part :+ amount))))
+
+(defn withdraw-from-account [id amount]
+  (db/execute-in-transaction!
+   (audit-log/insert-withdraw-log id amount)
+   (update-account id (change-amount-query-part :- amount))))
+
 (defn transfer [{:keys [sending-account-id
                         receiving-account-id
                         amount]}]
@@ -57,8 +68,11 @@
                                   (change-amount-query-part :- amount))
                   (update-account receiving-account-id
                                   (change-amount-query-part :+ amount))]]
-     (when (some empty? results)
-       (db/rollback))
+     (if (some empty? results)
+       (db/rollback)
+       (audit-log/insert-transfer-log sending-account-id
+                                      receiving-account-id
+                                      amount))
      results)))
 
 (defn handle-create [{:keys [body-params]}]
@@ -71,26 +85,25 @@
 
 (defn handle-deposit [{{:keys [amount]} :body-params
                        {:keys [id]} :path-params}]
-  (if-let [updated-account (update-account
-                            (Integer/parseInt id)
-                            (change-amount-query-part :+ amount))]
-    (response/response (<-db updated-account))
-    (response/not-found "Account not found")))
+  (-> (Integer/parseInt id)
+      (deposit-to-account amount)
+      <-db
+      response/response))
 
 (defn handle-withdraw [{{:keys [amount]} :body-params
                         {:keys [id]} :path-params}]
-  (if-let [updated-account (update-account
-                            (Integer/parseInt id)
-                            (change-amount-query-part :- amount))]
-    (response/response (<-db updated-account))
-    (response/not-found "Account not found")))
+  (-> (Integer/parseInt id)
+      (withdraw-from-account amount)
+      <-db
+      response/response))
 
 (defn handle-send [{{:keys [amount account-number]} :body-params
                     {:keys [id]} :path-params}]
   (let [sending-account-id (Integer/parseInt id)
         receiving-account-id account-number]
     (if (= sending-account-id receiving-account-id)
-      (response/bad-request "It is not possible to transfer money from an account to itself")
+      (response/bad-request
+        "It is not possible to transfer money from an account to itself")
       (let [[updated-sending-account
              updated-receiving-account]
             (transfer
@@ -111,6 +124,6 @@
   (response/bad-request "Amount must be a positive value"))
 
 (defmethod exception/handle-psql-exception {:constraint "balance_non_negative"
-                                           :table "account"}
+                                            :table "account"}
   [_ _]
   (response/bad-request "Balance must not be a negative value"))
